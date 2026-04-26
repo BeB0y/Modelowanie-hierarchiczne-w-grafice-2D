@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Subroutine Hierarchy - Czarny Romb</title>
+<script>
+    var canvas, graphics;
+    var X_LEFT = -4, X_RIGHT = 4, Y_BOTTOM = -3, Y_TOP = 3;
+    var BACKGROUND = "white";
+    var pixelSize;
+    var frameNumber = 0;
+
+    function drawRhombus() {
+        graphics.save();
+        graphics.rotate((frameNumber * 2) * Math.PI / 180);
+        graphics.scale(0.8, 1.2);
+        graphics.rotate(45 * Math.PI / 180);
+        graphics.fillStyle = "black";
+        graphics.beginPath();
+        graphics.moveTo(-0.5, -0.5);
+        graphics.lineTo(0.5, -0.5);
+        graphics.lineTo(0.5, 0.5);
+        graphics.lineTo(-0.5, 0.5);
+        graphics.closePath();
+        graphics.fill();
+        graphics.restore();
+    }
+
+    function drawSwing(color, x, y, scale) {
+        graphics.save();
+        graphics.translate(x, y);
+        graphics.scale(scale, scale);
+        graphics.fillStyle = color;
+        graphics.save();
+        graphics.scale(0.5, 1.5);
+        filledTriangle(graphics);
+        graphics.restore();
+        graphics.save();
+        graphics.translate(0, 1.5);
+        graphics.rotate(Math.sin(frameNumber * 0.05) * 0.2);
+        graphics.fillStyle = "red";
+        graphics.save();
+        graphics.scale(2.2, 0.15);
+        filledRect();
+        graphics.restore();
+        graphics.save();
+        graphics.translate(-1.1, 0);
+        drawRhombus();
+        graphics.restore();
+        graphics.save();
+        graphics.translate(1.1, 0);
+        drawRhombus();
+        graphics.restore();
+        graphics.restore();
+        graphics.restore();
+    }
+
+    function drawWorld() {
+        drawSwing("purple", -2.5, -1.5, 0.6);
+        drawSwing("blue", 0.5, -2.5, 0.8);
+        drawSwing("green", 2.2, 0.5, 0.4);
+    }
+
+    function updateFrame() {
+        frameNumber++;
+    }
+
+    function filledRect() { graphics.fillRect(-0.5,-0.5,1,1); }
+    function filledTriangle(g2) {
+        g2.beginPath();
+        g2.moveTo(-0.5,0); g2.lineTo(0.5,0); g2.lineTo(0,1);
+        g2.closePath(); g2.fill();
+    }
+
+    function draw() {
+        graphics.save();
+        graphics.fillStyle = BACKGROUND;
+        graphics.fillRect(0,0,canvas.width,canvas.height);
+        applyLimits(graphics,X_LEFT,X_RIGHT,Y_TOP,Y_BOTTOM,false);
+        graphics.lineWidth = pixelSize;
+        drawWorld();
+        graphics.restore();
+    }
+
+    function applyLimits(g, xleft, xright, ytop, ybottom, preserveAspect) {
+       var width = canvas.width, height = canvas.height;
+       pixelSize = Math.min(Math.abs((xright-xleft)/width), Math.abs((ybottom-ytop)/height));
+       g.scale( width / (xright-xleft), height / (ybottom-ytop) );
+       g.translate( -xleft, -ytop );
+    }
+
+    var running = false;
+    function frame() { if (running) { updateFrame(); draw(); requestAnimationFrame(frame); } }
+    function doAnimationCheckbox() { 
+        var shouldRun = document.getElementById("animateCheck").checked;
+        if ( shouldRun != running ) { running = shouldRun; if (running) requestAnimationFrame(frame); }
+    }
+    function init() {
+        canvas = document.getElementById("thecanvas");
+        graphics = canvas.getContext("2d");
+        document.getElementById("animateCheck").onchange = doAnimationCheckbox; 
+        draw();
+    }
+</script>
+</head>
+<body onload="init()">
+<h3>Sposób (a): Hierarchia funkcji - Wypełnione Romby</h3>
+<p><label><input type="checkbox" id="animateCheck"><b>Run the Animation</b></label></p>
+<canvas id="thecanvas" width="800" height="600" style="border: 1px solid black"></canvas>
+</body>
+</html>
