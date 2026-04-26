@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>graf sceny</title>
+<script>
+    var canvas, graphics;
+    var X_LEFT = -4, X_RIGHT = 4, Y_BOTTOM = -3, Y_TOP = 3;
+    var BACKGROUND = "white", pixelSize, frameNumber = 0, world;
+
+    function SceneGraphNode() { this.fillColor = null; this.strokeColor = null; }
+    SceneGraphNode.prototype.draw = function(g) {
+        g.save();
+        if (this.fillColor) g.fillStyle = this.fillColor;
+        if (this.strokeColor) g.strokeStyle = this.strokeColor;
+        this.doDraw(g);
+        g.restore();
+    }
+    SceneGraphNode.prototype.setColor = function(color) { this.fillColor = color; this.strokeColor = color; return this; }
+
+    function CompoundObject() { SceneGraphNode.call(this); this.subobjects = []; }
+    CompoundObject.prototype = new SceneGraphNode();
+    CompoundObject.prototype.add = function(node) { this.subobjects.push(node); return this; }
+    CompoundObject.prototype.doDraw = function(g) { for (var i=0; i<this.subobjects.length; i++) this.subobjects[i].draw(g); }
+
+    function TransformedObject(object) {
+        SceneGraphNode.call(this); this.object = object;
+        this.rotationInDegrees = 0; this.scaleX = 1; this.scaleY = 1; this.translateX = 0; this.translateY = 0;
+    }
+    TransformedObject.prototype = new SceneGraphNode();
+    TransformedObject.prototype.setRotation = function(angle) { this.rotationInDegrees = angle; return this; }
+    TransformedObject.prototype.setScale = function(sx, sy) { this.scaleX = sx; this.scaleY = sy; return this; }
+    TransformedObject.prototype.setTranslation = function(dx, dy) { this.translateX = dx; this.translateY = dy; return this; }
+    TransformedObject.prototype.doDraw = function(g) {
+        g.save();
+        if (this.translateX != 0 || this.translateY != 0) g.translate(this.translateX, this.translateY);
+        if (this.rotationInDegrees != 0) g.rotate(this.rotationInDegrees/180*Math.PI);
+        if (this.scaleX != 1 || this.scaleY != 1) g.scale(this.scaleX, this.scaleY);
+        this.object.draw(g);
+        g.restore();
+    }
+
+    var filledRect = new SceneGraphNode();
+    filledRect.doDraw = function(g) { g.fillRect(-0.5,-0.5,1,1); };
+    var filledTriangle = new SceneGraphNode();
+    filledTriangle.doDraw = function(g) {
+        g.beginPath(); g.moveTo(-0.5,0); g.lineTo(0.5,0); g.lineTo(0,1); g.closePath(); g.fill();
+    };
+    var rhombusShape = new SceneGraphNode();
+    rhombusShape.doDraw = function(g) {
+        g.save(); g.scale(0.8, 1.2); g.rotate(45 * Math.PI / 180);
+        g.fillStyle = "black";
+        g.fillRect(-0.5, -0.5, 1, 1);
+        g.restore();
+    };
+
+    var animData = [];
+    function createSwing(color, x, y, scale) {
+        var swing = new CompoundObject();
+        var base = new TransformedObject(filledTriangle).setScale(0.5, 1.5).setColor(color);
+        var armGroup = new CompoundObject();
+        var bar = new TransformedObject(filledRect).setScale(2.2, 0.15).setColor("red");
+        var r1 = new TransformedObject(rhombusShape).setTranslation(-1.1, 0);
+        var r2 = new TransformedObject(rhombusShape).setTranslation(1.1, 0);
+        armGroup.add(bar).add(r1).add(r2);
+        var staticParts = new TransformedObject(armGroup).setTranslation(0, 1.5);
+        swing.add(base).add(staticParts);
+        var root = new TransformedObject(swing).setTranslation(x, y).setScale(scale, scale);
+        animData.push({ leftR: r1, rightR: r2 });
+        return root;
+    }
+
+    function createWorld() {
+        world = new CompoundObject();
+        animData = [];
+        world.add(createSwing("purple", -2.5, -1.5, 0.6));
+        world.add(createSwing("blue", 0.5, -2.5, 0.8));
+        world.add(createSwing("green", 2.2, 0.5, 0.4));
+    }
+
+    function updateFrame() {
+        frameNumber++;
+        for (var i=0; i<animData.length; i++) {
+            animData[i].leftR.setRotation(frameNumber*3);
+            animData[i].rightR.setRotation(frameNumber*3);
+        }
+    }
+
+    function draw() {
+        graphics.save();
+        graphics.fillStyle = BACKGROUND;
+        graphics.fillRect(0,0,canvas.width,canvas.height);
+        applyLimits(graphics,X_LEFT,X_RIGHT,Y_TOP,Y_BOTTOM,false);
+        graphics.lineWidth = pixelSize;
+        world.draw(graphics);
+        graphics.restore();
+    }
+
+    function applyLimits(g, xleft, xright, ytop, ybottom, preserveAspect) {
+       var width = canvas.width, height = canvas.height;
+       pixelSize = Math.min(Math.abs((xright-xleft)/width), Math.abs((ybottom-ytop)/height));
+       g.scale( width / (xright-xleft), height / (ybottom-ytop) );
+       g.translate( -xleft, -ytop );
+    }
+
+    var running = false;
+    function frame() { if (running) { updateFrame(); draw(); requestAnimationFrame(frame); } }
+    function doAnimationCheckbox() { 
+        var shouldRun = document.getElementById("animateCheck").checked;
+        if ( shouldRun != running ) { running = shouldRun; if (running) requestAnimationFrame(frame); }
+    }
+    function init() {
+        canvas = document.getElementById("thecanvas");
+        graphics = canvas.getContext("2d");
+        document.getElementById("animateCheck").onchange = doAnimationCheckbox; 
+        createWorld();
+        draw();
+    }
+</script>
+</head>
+<body onload="init()">
+<h3>graf sceny</h3>
+<noscript>
+   <p><b style="color:red">Error: This page requires JavaScript.</b></p>
+</noscript>
+<p id="message"><label><input type="checkbox" id="animateCheck"><b>Run the Animation</b></label></p>
+<canvas id="thecanvas" width="800" height="600" style="border: 1px solid black"></canvas>
+</body>
+</html>
